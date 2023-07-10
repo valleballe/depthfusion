@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import argparse
 from scipy.sparse import coo_matrix, linalg
+import scipy.ndimage as ndi
 
 def depth2orthomesh(depth, x_step=1, y_step=1, scale=[1.0, 1.0, 1.0], minus_depth=True):
     vertices = []
@@ -116,7 +117,7 @@ def activation_tanh(factor):
 # Implementation of the following paper
 # "Notes on Inflating Curves" [Baran and Lehtinen 2009].
 # http://alecjacobson.com/weblog/media/notes-on-inflating-curves-2009-baran.pdf
-def inflationByBaran(mask, use_sparse=True):
+def inflationByBaran_old(mask, use_sparse=True):
     max_depth = 1
     h, w = mask.shape
     depth = np.zeros((h, w))
@@ -167,8 +168,8 @@ def inflationByBaran(mask, use_sparse=True):
             col.append(tri[1])
             data.append(tri[2])
         data = np.array(data)
-        row = np.array(row, dtype=np.int)
-        col = np.array(col, dtype=np.int)
+        row = np.array(row, dtype=int)
+        col = np.array(col, dtype=int)
         A = coo_matrix((data, (row, col)), shape=(num_param, num_param))
         x = linalg.spsolve(A, b)
     else:
@@ -202,26 +203,167 @@ def inflationByBaran(mask, use_sparse=True):
             if depth[j, i] != max_depth:
               depth[j, i] = np.sqrt(x[idx])-z_min
     print(np.amin(depth))
+
+
     return depth
 
+
+def distance_to_edge(mask):
+    """
+    Compute the Euclidean distance for each mesh pixel to the nearest edge pixel
+    """
+    distance_transform = ndi.distance_transform_edt(mask)
+    return distance_transform
+
+    # Compute distance of every pixel to the nearest edge in the mask
+    distances = distance_to_edge(mask)
+
+    # Fills up the depth array with the computed depths
+    for j in range(1, h-1):
+        for i in range(1, w-1):
+            c = mask[j, i]
+            if c == 0:
+                continue
+
+            idx = img2param_idx[get_idx(i, j)]
+            # setting z = √ h
+            if x[idx] != 0:
+                depth[j, i] = np.sqrt(x[idx])
+            else:
+                depth[j, i] = x[idx]
+            
+            # Check if this pixel is within r distance from edge
+            if distances[j, i] < r:
+                # Interpolate depth based on distance to edge
+                depth[j, i] *= (distances[j, i] / r)
+
+    # Returns the depth map
+    return depth
+
+
+from scipy.sparse import coo_matrix
+import numpy as np
+from scipy.sparse.linalg import spsolve
+
+
+def inflationByBaran(mask, use_sparse=True):
+    """Function to create a depth image from a mask."""
+    
+    #1. 4 neighbor laplacian
+    img2param_idx = {}
+    param_idx = 0
+    h, w = mask.shape
+    depth = np.zeros((h, w)) # Depth array
+
+    def get_idx(x, y):
+        return y * w + x
+
+    for y in range(h):
+        for x in range(w):
+            c = mask[y, x]
+            if c != 0:
+                img2param_idx[get_idx(x, y)] = param_idx
+                param_idx += 1
+
+    num_param = len(img2param_idx.keys())
+    triplets = []
+
+    cur_row = 0
+    for y in range(1, h-1):
+        for x in range(1, w-1):
+            c = mask[y, x]
+            if c == 0:
+                continue
+
+            triplets.append([cur_row, img2param_idx[get_idx(x, y)], -4.0])
+            kernels = [(y, x - 1), (y, x + 1), (y - 1, x), (y + 1, x)]
+
+            for kernel in kernels:
+                jj, ii = kernel
+                if mask[jj, ii] != 0:
+                    triplets.append([cur_row, img2param_idx[get_idx(ii, jj)], 1.0])
+
+            cur_row += 1
+
+    #2. Prepare right hand side
+    b = np.zeros((num_param, 1))
+    rhs = -4.0
+    cur_row = 0
+    for y in range(1, h-1):
+        for x in range(1, w-1):
+            c = mask[y, x]
+            if c == 0:
+                continue
+            b[cur_row] = rhs
+            cur_row += 1
+
+    #3. Sparse matrix
+    data, row, col = [], [], []
+    for tri in triplets:
+        row.append(tri[0])
+        col.append(tri[1])
+        data.append(tri[2])
+
+    # Creating the sparse matrix using data, row, and col
+    data = np.array(data)
+    row = np.array(row, dtype=int)
+    col = np.array(col, dtype=int)
+    A = coo_matrix((data, (row, col)), shape=(num_param, num_param))
+
+    # Solve for 'x' using scipy's sparse linear solver
+    x = linalg.spsolve(A, b)
+
+     # Fills up the depth array with the computed depths
+    z_min = min(x)
+    max_depth = 1
+
+    for j in range(h):
+        for i in range(w):
+            # Skip vertices not in mask
+            if get_idx(i, j) not in img2param_idx:
+                continue
+            idx = img2param_idx[get_idx(i, j)]
+
+            # If the vertex is at the edge of the mask, set the depth to max_depth
+            if (mask[j - 1, i] == 0 or mask[j + 1, i] == 0 or 
+                mask[j, i - 1] == 0 or mask[j, i + 1] == 0 or
+                mask[j-1, i-1] == 0 or mask[j+1, i+1] == 0 or 
+                mask[j-1, i+1] == 0 or mask[j-1, i-1] == 0):
+                    depth[j, i] = max_depth
+            else:
+                # Otherwise, set the depth to the solution of the Poisson's equation
+                depth[j, i] = np.sqrt(x[idx]) - z_min
+
+    return depth
+
+def inflate_mesh(mask_path, output_path):
+
+    # Read mask of mesh
+    mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+    mask[mask > 100] = 255
+    mask[mask <= 100] = 0
+    
+    # Infer depth
+    depth = inflationByBaran(mask)
+
+    # Apply depth to mesh
+    vertices, faces = depth2orthomesh(depth)
+
+    #Export mesh
+    writeMeshAsPly(output_path + 'inflated_mesh.ply', vertices, faces)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Image Processing Script")
 
-    parser.add_argument('--mask_path', type=str, help='Path to the masks')
-    parser.add_argument('--output_path', type=str, help='Path to output the results')
+    parser.add_argument('--mask_path', type=str, default="data/character.png", help='Path to the masks')
+    parser.add_argument('--output_path', type=str, default="output/", help='Path to output the results')
 
     args = parser.parse_args()
 
     mask_path = args.mask_path
     output_path = args.output_path
 
-    mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-    mask[mask > 100] = 255
-    mask[mask <= 100] = 0
-    
-    depth = inflationByBaran(mask)
-    vertices, faces = depth2orthomesh(depth)
-    writeMeshAsPly(output_path + 'output_baran.ply', vertices, faces)
-    print("DONE")
+
+    # Read mask of mesh
+    inflate_mesh(mask_path, output_path)
