@@ -117,6 +117,7 @@ def activation_tanh(factor):
 # "Notes on Inflating Curves" [Baran and Lehtinen 2009].
 # http://alecjacobson.com/weblog/media/notes-on-inflating-curves-2009-baran.pdf
 def inflationByBaran(mask, use_sparse=True):
+    max_depth = 1
     h, w = mask.shape
     depth = np.zeros((h, w))
     img2param_idx = {}
@@ -181,30 +182,28 @@ def inflationByBaran(mask, use_sparse=True):
             A[row, col] = val
         x = np.linalg.solve(A, b)
 
+    # Fills up the depth array with the computed depths
+    z_min = min(x)
+    print(z_min)
     for j in range(1, h-1):
         for i in range(1, w-1):
             c = mask[j, i]
             if c == 0:
                 continue
+
+            # Check for edge pixels
+            if (mask[j - 1, i] == 0 or mask[j + 1, i] == 0 or mask[j, i - 1] == 0 or mask[j, i + 1] == 0 or mask[j-1, i - 1] == 0 or mask[j+1, i + 1] == 0 or mask[j-1, i + 1] == 0 or mask[j-1, i-1] == 0):# or  mask[j - 2, i] == 0 or mask[j + 2, i] == 0 or mask[j, i - 2] == 0 or mask[j, i + 2] == 0):
+                # For edge pixels, assign full depth
+                depth[j, i] = max_depth  # Where max_depth is a pre-defined value for the maximum depth
+                continue
+
             idx = img2param_idx[get_idx(i, j)]
             # setting z = √ h
-            depth[j, i] = np.sqrt(x[idx])
+            if depth[j, i] != max_depth:
+              depth[j, i] = np.sqrt(x[idx])-z_min
+    print(np.amin(depth))
     return depth
 
-
-def visualizeDepth(depth, path='', dmin=0, dmax=50, cm_name='viridis'):
-    import matplotlib.pyplot as plt
-    cm = plt.get_cmap(cm_name)
-    colors = (np.array(cm.colors) * 255).astype(np.uint8)
-    colors = colors[..., ::-1] # -> BGR
-    
-    normed = np.clip((depth - dmin) / (dmax - dmin), 0, 1)
-    normed = (normed * 255).astype(np.uint8)
-    
-    vis = colors[normed]
-    if path != '':
-        cv2.imwrite(path, vis)
-    return vis
 
 
 if __name__ == '__main__':
@@ -218,25 +217,11 @@ if __name__ == '__main__':
     mask_path = args.mask_path
     output_path = args.output_path
 
-    print(mask_path)
     mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
     mask[mask > 100] = 255
     mask[mask <= 100] = 0
     
     depth = inflationByBaran(mask)
-    print(output_path+'output_baran_.jpg')
-    visualizeDepth(depth, output_path+'/output_baran_.jpg')
     vertices, faces = depth2orthomesh(depth)
     writeMeshAsPly(output_path + 'output_baran.ply', vertices, faces)
-
-    #depth = inflationByDistanceTransform(mask)
-    #visualizeDepth(depth, name + '_dist.jpg')
-    #vertices, faces = depth2orthomesh(depth)
-    #writeMeshAsPly(name + '_dist.ply', vertices, faces)
-
-    #depth = inflationByDistanceTransform(mask, activation_tanh(0.02))
-    #visualizeDepth(depth, name + '_dist_tanh.jpg')
-    #vertices, faces = depth2orthomesh(depth)
-    #writeMeshAsPly(name + '_dist_tanh.ply', vertices, faces)
-
-
+    print("DONE")
