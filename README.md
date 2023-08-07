@@ -19,3 +19,15 @@ alias blender="open /Applications/Blender.app --args"
 
 ### rembg for masking
 !pip install rembg
+
+### zoedepth for depth estimation
+pip install timm==0.6.7
+cd zoedepth
+´´´python sanity.py´´´ # downloading models
+
+
+### UI
+!pip install streamlit
+!pip install pyvista 
+!pip install stpyvista 
+
