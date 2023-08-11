@@ -1,6 +1,3 @@
 [submodule "utils/ZoeDepth"]
 	path = utils/ZoeDepth
 	url = https://github.com/isl-org/ZoeDepth.git
-[submodule "utils/DPT"]
-	path = utils/DPT
-	url = https://github.com/isl-org/DPT.git
