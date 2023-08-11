@@ -25,6 +25,9 @@ pip install timm==0.6.7
 cd zoedepth
 ´´´python sanity.py´´´ # downloading models
 
+### DPT
+https://github.com/intel-isl/DPT/releases/download/1_0/dpt_hybrid-ade20k-53898607.pt
+
 
 ### UI
 !pip install streamlit

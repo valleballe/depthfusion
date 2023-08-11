@@ -339,7 +339,20 @@ def inflationByBaran(mask, use_sparse=True):
 
     return depth
 
-def inflate_mesh(mask_path, color_img_path, output_path):
+def displace_depth_by_color(depth_img_path, depth, alpha=0.5):
+    # read the grayscale image
+    gray_img = cv2.imread(depth_img_path, cv2.IMREAD_GRAYSCALE)
+    
+    # normalize the pixel values to range [0,1]
+    normalized_img = cv2.normalize(gray_img.astype(float), None, alpha=0.0, beta=1.0, norm_type=cv2.NORM_MINMAX)
+    
+    # Displace depth based on pixel values
+    displaced_depth = ((1 - alpha) * depth) + (alpha * normalized_img * depth)
+    
+    return displaced_depth
+
+
+def inflate_mesh(mask_path, color_img_path, output_path, depth_map_path, apply_depth_map, max_depth, depth_map_weight):
 
     # Read mask of mesh
     mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
@@ -349,9 +362,14 @@ def inflate_mesh(mask_path, color_img_path, output_path):
     # Infer depth
     depth = inflationByBaran(mask)
 
+    # Apply depthmap
+    if apply_depth_map:
+        depth = displace_depth_by_color(depth_map_path, depth, depth_map_weight)
+
+    depth = depth * max_depth
+
     # Apply depth to mesh
     vertices, faces, colors = depth2orthomesh(depth, color_img_path)
-
 
     #Export mesh
     writeMeshAsPly(output_path + 'inflated_mesh.ply', vertices, faces, colors)
@@ -360,16 +378,18 @@ def inflate_mesh(mask_path, color_img_path, output_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Image Processing Script")
 
-    parser.add_argument('--mask_path', type=str, default="data/vase_mask.png", help='Path to the masks')
-    parser.add_argument('--color_img_path', type=str, default="data/vase.png", help='Path to the original image')
+    parser.add_argument('--mask_path', type=str, default="output/mask.png", help='Path to the masks')
+    parser.add_argument('--color_img_path', type=str, default="output/cenk/0.png", help='Path to the original image')
+    parser.add_argument('--depth_map_path', type=str, default="output/depth.png", help='Path to the original image')
     parser.add_argument('--output_path', type=str, default="output/", help='Path to output the results')
 
     args = parser.parse_args()
 
     mask_path = args.mask_path
     color_img_path = args.color_img_path
+    depth_map_path = args.depth_map_path
     output_path = args.output_path
 
 
     # Read mask of mesh
-    inflate_mesh(mask_path, color_img_path, output_path)
+    inflate_mesh(mask_path, color_img_path, output_path, depth_map_path, apply_depth_map=True, max_depth=1, depth_map_weight=1)
