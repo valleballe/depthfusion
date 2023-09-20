@@ -34,3 +34,7 @@ https://github.com/intel-isl/DPT/releases/download/1_0/dpt_hybrid-ade20k-5389860
 !pip install pyvista 
 !pip install stpyvista 
 
+
+### DeepBump
+!pip install numpy onnxruntime imageio
+

@@ -4,8 +4,9 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'utils/DPT'))
 
 import argparse
 import torch
-from utils.DPT.run_monodepth import run as dpt_depth
+#from utils.DPT.run_monodepth import run as dpt_depth
 from utils.ZoeDepth.zoedepth.utils.misc import get_image_from_url, colorize
+from utils.DPT.run_monodepth import depth_estimation as dpt_depth_estimation
 from PIL import Image
 import matplotlib.pyplot as plt
 
@@ -28,7 +29,12 @@ def depth_estimation(input_path, output_path, model):
         output.save(output_path)
 
     elif model=="DPT":
-        dpt_depth(input_path, output_path, model_path="utils/DPT/weights/dpt_large-midas-2f21e586.pt", model_type="dpt_large")
+        dpt_depth_estimation(input_path, output_path, model_path="utils/DPT/weights/dpt_large-midas-2f21e586.pt", model_type="dpt_large")
+
+    elif model=="DeepBump":
+        print(input_path)
+        os.system(f"python3 utils/DeepBump/cli.py {input_path} {output_path}/normals.png color_to_normals")
+        os.system(f"python3 utils/DeepBump/cli.py {output_path}/normals.png {output_path}/depth.png normals_to_height")
 
     else:
         raise Exception("Depth estimation model not specified")

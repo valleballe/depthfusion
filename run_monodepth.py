@@ -164,6 +164,11 @@ def depth_estimation(input_path, output_path, model_path, model_type="dpt_large"
     )
     utils.DPT.util.io.write_depth(filename, prediction, bits=2, absolute_depth=absolute_depth)
 
+    # Load the image
+    #image_16bit = cv2.imread(filename+".png", flags=cv2.IMREAD_ANYDEPTH)
+    #norm_image = cv2.normalize(image_16bit, None, 0, 65535, cv2.NORM_MINMAX)
+    #cv2.imwrite("output/pillow/depth.png", norm_image)
+
     return filename+".png"
 
     #print("finished")
