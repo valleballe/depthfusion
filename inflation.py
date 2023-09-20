@@ -5,7 +5,6 @@ import argparse
 from scipy.sparse import coo_matrix, linalg
 from scipy.sparse.linalg import spsolve
 import scipy.ndimage as ndi
-import trimesh
 
 def dither_image(image_path):
     # Load grayscale image using cv2
