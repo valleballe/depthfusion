@@ -37,15 +37,15 @@ obj = bpy.context.selected_objects[0]
 bpy.context.view_layer.objects.active = obj
 
 # Add a Mirror modifier
-bpy.ops.object.modifier_add(type='MIRROR')
-print("Applying mirror...")
+#bpy.ops.object.modifier_add(type='MIRROR')
+#print("Applying mirror...")
 
 # Set use_axis for the Mirror modifier, False for X and Y, True for Z  
-bpy.context.object.modifiers["Mirror"].use_axis = (False, False, True)
+#bpy.context.object.modifiers["Mirror"].use_axis = (False, False, True)
 
 # Enable merging and specify the merge limit
-bpy.context.object.modifiers["Mirror"].use_mirror_merge = True
-bpy.context.object.modifiers["Mirror"].merge_threshold = 0.01
+#bpy.context.object.modifiers["Mirror"].use_mirror_merge = True
+#bpy.context.object.modifiers["Mirror"].merge_threshold = 0.01
 
 # Apply the modifier
 #bpy.ops.object.modifier_apply(modifier="Mirror")
