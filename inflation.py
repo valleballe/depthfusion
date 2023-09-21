@@ -40,7 +40,6 @@ def calculate_normal(y, x, scale, depth, radius=1):
     return [-dzdx / d, -dzdy / d, 1 / d]
 
 def depth2orthomesh(depth, color_img_path, x_step=1, y_step=1, scale=[1.0, 1.0, 1.0], minus_depth=True, displacement_factor=.1):
-    print("beginning")
 
     # Load the color image
     color_img = cv2.imread(color_img_path)
@@ -66,7 +65,6 @@ def depth2orthomesh(depth, color_img_path, x_step=1, y_step=1, scale=[1.0, 1.0, 
 
     max_connect_z_diff = 99999.9
 
-    print("Before")
     for y in range(1, h + 1, y_step):
         for x in range(1, w + 1, x_step):
 
@@ -200,7 +198,6 @@ def inflationByDistanceTransform(mask, activation_func=None):
     h, w = depth.shape
     for j in range(h):
         for i in range(w):
-            #print(d, activation_func(d))
             activated_depth[j, i] = activation_func(depth[j, i])
     return activated_depth
 
@@ -276,13 +273,11 @@ def inflationByBaran(mask, use_sparse=True):
     data = np.array(data)
     row = np.array(row, dtype=int)
     col = np.array(col, dtype=int)
-    print("before")
     A = coo_matrix((data, (row, col)), shape=(num_param, num_param))
     A_csc = csc_matrix(A)
 
     # Solve for 'x' using scipy's sparse linear solver
     x = linalg.spsolve(A_csc.astype(np.float64), b.astype(np.float64))
-    print("after")
 
     # Fills up the depth array with the computed depths
     z_min = min(x)
@@ -436,4 +431,3 @@ if __name__ == '__main__':
     #vertices, faces, colors = depth2orthomesh(depth, color_img_path)
     #write_obj_file(os.path.join(output_path,'inflated_mesh.obj'), vertices, faces, color_img_path)
     #write_mtl_file(os.path.join(output_path,'inflated_mesh.mtl'), color_img_path)
-    print('done')

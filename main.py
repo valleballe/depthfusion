@@ -1,6 +1,7 @@
 import os
 import argparse
 import openai
+from datetime import datetime
 
 # remove background
 import cv2
@@ -12,6 +13,9 @@ from PIL import Image
 from inflation import inflate_mesh
 from depth_estimation import depth_estimation
 from ImageGenerator import DallE
+
+# API keys
+from keys.keys import OPENAI_API_KEY
 
 def remove_background(img_path, output_path):
 
@@ -84,57 +88,43 @@ if __name__ == '__main__':
 
 	parser = argparse.ArgumentParser(description="Main script")
 
-
-	parser.add_argument('--prompt', type=str, default="", help='Prompt to generate image')
-	parser.add_argument('--input_path', type=str, default="data/vase.png", help='Path to the masks')
-	parser.add_argument('--output_path', type=str, default="output/", help='Folder to output the results')
-	parser.add_argument('--apply_mirror', type=bool, default=True, help='Boolean for whether to mirror mesh')
-	parser.add_argument('--decimate', type=float, default=0.001, help='Value for decimating mesh. If \'0\' then no decimation')
-	parser.add_argument('--subdivide', type=int, default=1, help='Value for subdividing mesh. If \'0\' then no subdivision')
-	parser.add_argument('--displace', type=float, default=1.0, help='Value for displacing mesh. If \'0.0\' then no subdivision')
+	parser.add_argument('-p','--prompt', type=str, default="", help='Prompt to generate image. Leave empty if image is prefered.')
+	parser.add_argument('-i','--input_image', type=str, default="data/chinese_laundry.png", help='Path to the input image')
+	parser.add_argument('-o','--output_path', type=str, default="output/", help='Folder to output the results')
 
 	args = parser.parse_args()
-	
-	"""
-	# Setup Streamlit APP
-	st.title('DepthFusion')
-	file = st.file_uploader("Please choose a file")
 
-	if file != None:
-		st.image(Image.open(file), caption='Uploaded Images')
-	"""
-
-	prompt = "sideview of monkey vase"#args.prompt
-	img_path = args.input_path
+	prompt = args.prompt #"sideview of monkey vase"
+	img_path = args.input_image
 	output_path = args.output_path
-	apply_mirror = args.apply_mirror
-	decimate = args.decimate
-	subdivide = args.subdivide
-	displace = args.displace
 
 
 	# API key
-	
+	openai.api_key = OPENAI_API_KEY
 
 
 	# Load image
 	if prompt != "":
 
 		# Create folders
-		project_path = os.path.join(output_path, prompt.replace(" ","_"))
+		project_folder_name = prompt.replace(" ","_")
+		project_folder_name_w_time = f"{project_folder_name}_{datetime.now().strftime('%m-%d-%H:%M')}"
+		project_path = os.path.join(output_path, project_folder_name_w_time)
 		os.makedirs(project_path, exist_ok = True)
 
 		# Generate Image
-		#img_generator = DallE(project_path=project_path)
-		#filename = img_generator.generate_image(prompt)
+		img_generator = DallE(project_path=project_path)
+		filename = img_generator.generate_image("sideview of "+prompt)
 		img_path = os.path.join(project_path, "colormap.png")
 
 
 
-	elif input_path!="":
+	elif img_path!="":
 
 		# Create folders
-		project_path = os.path.join(output_path, input_path)
+		project_folder_name = os.path.splitext(os.path.basename(img_path))[0]
+		project_folder_name_w_time = f"{project_folder_name}_{datetime.now().strftime('%m-%d-%H:%M')}"
+		project_path = os.path.join(output_path, project_folder_name_w_time)
 		os.makedirs(project_path, exist_ok = True)
 			
 		# Copy color map to project dir
@@ -149,12 +139,9 @@ if __name__ == '__main__':
 	# Remove background
 	print("Removing background...")
 	mask = remove_background(img_path, os.path.join(project_path,'mask.png'))
-	#mask = output_path+'mask.png'
-	#st.image(Image.open(mask), caption='Mask Image')
 
 	# Generate depth map
 	print("Generating depthmap...")
-	#depth_map_path = zoe_depth_estimation(img_path, project_path+"depth.png")
 	depth_map_path = depth_estimation(img_path, project_path, model="DeepBump")
 	
 	# Inflate mesh based on Baran Method
@@ -162,33 +149,13 @@ if __name__ == '__main__':
 	inflate_mesh(mask, img_path, project_path, depth_map_path, apply_depth_map=False, max_depth=1, depth_map_weight=1)
 
 	# Mirror inflated mesh
-	if apply_mirror:
-		print("Mirroring mesh...")
-		os.system(f"/Applications/Blender.app/Contents/MacOS/blender --background -noaudio --python mirror.py -- \
-			{project_path} \
-			{'inflated_mesh.obj'} \
-			{'final_mesh.obj'} \
-			")
+	print("Applying depthmap...")
+	os.system(f"/Applications/Blender.app/Contents/MacOS/blender --background -noaudio --python mirror.py -- \
+		{project_path} \
+		{'inflated_mesh.obj'} \
+		{'final_mesh.obj'} \
+		")
 
-	# Decimate mesh
-	#if decimate > 0:
-		#print("Decimating mesh...")
-		#os.system(f"/Applications/Blender.app/Contents/MacOS/blender --background -noaudio --python decimate_mesh.py -- {project_path} {'mirrored_mesh.obj'} {'decimated_mesh.obj'}")
-
-	# Subdivision
-	#if subdivide > 0:
-		#print("Decimating mesh...")
-		#os.system(f"/Applications/Blender.app/Contents/MacOS/blender --background -noaudio --python subdivide_mesh.py -- {project_path} {'decimated_mesh.obj'} {'subdivided_mesh.obj'}")
-
-	# Displace mesh with depthmap
-	#if displace > 0:
-		#print("Displacing mesh...")
-		#os.system("/Applications/Blender.app/Contents/MacOS/blender --background -noaudio --python displacement.py -- {project_path} {'subdivided_mesh.obj'} {'final_mesh.obj'}")
-
-	# * optional: Remesh
-
-	# Export blender file
-	# os.system("/Applications/Blender.app/Contents/MacOS/blender --background --python generate_blender_file.py -noaudio")
 
 
 	# Finish
