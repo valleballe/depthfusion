@@ -114,7 +114,7 @@ if __name__ == '__main__':
 
 
 	# API key
-	openai.api_key = "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"
+	
 
 
 	# Load image
@@ -139,7 +139,7 @@ if __name__ == '__main__':
 			
 		# Copy color map to project dir
 		img = cv2.imread(img_path)
-		img_path = project_path+"colormap.png"
+		img_path = os.path.join(project_path,"colormap.png")
 		cv2.imwrite(img_path, img)
 
 	else:

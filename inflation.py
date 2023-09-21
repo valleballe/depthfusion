@@ -2,7 +2,7 @@ import os
 import cv2
 import numpy as np
 import argparse
-from scipy.sparse import coo_matrix, linalg
+from scipy.sparse import coo_matrix, linalg, csc_matrix
 from scipy.sparse.linalg import spsolve
 import scipy.ndimage as ndi
 
@@ -40,7 +40,8 @@ def calculate_normal(y, x, scale, depth, radius=1):
     return [-dzdx / d, -dzdy / d, 1 / d]
 
 def depth2orthomesh(depth, color_img_path, x_step=1, y_step=1, scale=[1.0, 1.0, 1.0], minus_depth=True, displacement_factor=.1):
-    
+    print("beginning")
+
     # Load the color image
     color_img = cv2.imread(color_img_path)
     color_img = cv2.cvtColor(color_img, cv2.COLOR_BGR2RGB)
@@ -65,6 +66,7 @@ def depth2orthomesh(depth, color_img_path, x_step=1, y_step=1, scale=[1.0, 1.0, 
 
     max_connect_z_diff = 99999.9
 
+    print("Before")
     for y in range(1, h + 1, y_step):
         for x in range(1, w + 1, x_step):
 
@@ -103,7 +105,6 @@ def depth2orthomesh(depth, color_img_path, x_step=1, y_step=1, scale=[1.0, 1.0, 
                 
             vertex_id += 1
                 
-    print(vertices)
     for i in range(len(vertices)):
         vertices[i][2] = 0 if abs(vertices[i][2]) < 1 else vertices[i][2]
 
@@ -117,7 +118,7 @@ def depth2orthomesh(depth, color_img_path, x_step=1, y_step=1, scale=[1.0, 1.0, 
         a = vertices[faces[i][0]]
         b = vertices[faces[i][1]]
         c = vertices[faces[i][2]]
-        if a+b+c != 0:
+        if abs(a[2]) + abs(b[2]) + abs(c[2]) > 0.01:
             facesx.append(faces[i])
 
     faces = facesx
@@ -125,7 +126,6 @@ def depth2orthomesh(depth, color_img_path, x_step=1, y_step=1, scale=[1.0, 1.0, 
     faces2 = []
     colors2 = []
     for i in range(0,len(vertices)):
-
         vertices2.append([vertices[i][0],vertices[i][1],-vertices[i][2]])
         colors2.append(colors[i])
 
@@ -212,130 +212,6 @@ def activation_tanh(factor):
 # Implementation of the following paper
 # "Notes on Inflating Curves" [Baran and Lehtinen 2009].
 # http://alecjacobson.com/weblog/media/notes-on-inflating-curves-2009-baran.pdf
-def inflationByBaran_old(mask, use_sparse=True):
-    max_depth = 1
-    h, w = mask.shape
-    depth = np.zeros((h, w))
-    img2param_idx = {}
-    param_idx = 0
-
-    def get_idx(x, y):
-        return y * w + x
-
-    for y in range(h):
-        for x in range(w):
-            c = mask[y, x]
-            if c != 0:
-                img2param_idx[get_idx(x, y)] = param_idx
-                param_idx += 1
-    num_param = len(img2param_idx.keys())
-    triplets = []
-    cur_row = 0
-    # 4 neighbor laplacian
-    for y in range(1, h-1):
-        for x in range(1, w-1):
-            c = mask[y, x]
-            if c == 0:
-                continue
-            triplets.append([cur_row, img2param_idx[get_idx(x, y)], -4.0])
-            kernels = [(y, x - 1), (y, x + 1), (y - 1, x), (y + 1, x)]
-
-            for kernel in kernels:
-                jj, ii = kernel
-                if mask[jj, ii] != 0:
-                    triplets.append([cur_row, img2param_idx[get_idx(ii, jj)], 1.0])
-            cur_row += 1  # Go to the next equation
-    # Prepare right hand side
-    b = np.zeros((num_param, 1))
-    rhs = -4.0
-    cur_row = 0
-    for y in range(1, h-1):
-        for x in range(1, w-1):
-            c = mask[y, x]
-            if c == 0:
-                continue
-            b[cur_row] = rhs
-            cur_row += 1
-    if use_sparse:
-        # Sparse matrix version
-        data, row, col = [], [], []
-        for tri in triplets:
-            row.append(tri[0])
-            col.append(tri[1])
-            data.append(tri[2])
-        data = np.array(data)
-        row = np.array(row, dtype=int)
-        col = np.array(col, dtype=int)
-        A = coo_matrix((data, (row, col)), shape=(num_param, num_param))
-        x = linalg.spsolve(A, b)
-    else:
-        # Dense matrix version
-        A = np.zeros((num_param, num_param))
-        # Set from triplets
-        for tri in triplets:
-            row = tri[0]
-            col = tri[1]
-            val = tri[2]
-            A[row, col] = val
-        x = np.linalg.solve(A, b)
-
-    # Fills up the depth array with the computed depths
-    z_min = min(x)
-    print(z_min)
-    for j in range(1, h-1):
-        for i in range(1, w-1):
-            c = mask[j, i]
-            if c == 0:
-                continue
-
-            # Check for edge pixels
-            if (mask[j - 1, i] == 0 or mask[j + 1, i] == 0 or mask[j, i - 1] == 0 or mask[j, i + 1] == 0 or mask[j-1, i - 1] == 0 or mask[j+1, i + 1] == 0 or mask[j-1, i + 1] == 0 or mask[j-1, i-1] == 0):# or  mask[j - 2, i] == 0 or mask[j + 2, i] == 0 or mask[j, i - 2] == 0 or mask[j, i + 2] == 0):
-                # For edge pixels, assign full depth
-                depth[j, i] = max_depth  # Where max_depth is a pre-defined value for the maximum depth
-                continue
-
-            idx = img2param_idx[get_idx(i, j)]
-            # setting z = √ h
-            if depth[j, i] != max_depth:
-              depth[j, i] = np.sqrt(x[idx])-z_min
-    print(np.amin(depth))
-
-
-    return depth
-
-
-def distance_to_edge(mask):
-    """
-    Compute the Euclidean distance for each mesh pixel to the nearest edge pixel
-    """
-    distance_transform = ndi.distance_transform_edt(mask)
-    return distance_transform
-
-    # Compute distance of every pixel to the nearest edge in the mask
-    distances = distance_to_edge(mask)
-
-    # Fills up the depth array with the computed depths
-    for j in range(1, h-1):
-        for i in range(1, w-1):
-            c = mask[j, i]
-            if c == 0:
-                continue
-
-            idx = img2param_idx[get_idx(i, j)]
-            # setting z = √ h
-            if x[idx] != 0:
-                depth[j, i] = np.sqrt(x[idx])
-            else:
-                depth[j, i] = x[idx]
-            
-            # Check if this pixel is within r distance from edge
-            if distances[j, i] < r:
-                # Interpolate depth based on distance to edge
-                depth[j, i] *= (distances[j, i] / r)
-
-    # Returns the depth map
-    return depth
-
 
 
 def inflationByBaran(mask, use_sparse=True):
@@ -400,10 +276,13 @@ def inflationByBaran(mask, use_sparse=True):
     data = np.array(data)
     row = np.array(row, dtype=int)
     col = np.array(col, dtype=int)
+    print("before")
     A = coo_matrix((data, (row, col)), shape=(num_param, num_param))
+    A_csc = csc_matrix(A)
 
     # Solve for 'x' using scipy's sparse linear solver
-    x = linalg.spsolve(A.astype(np.float64), b.astype(np.float64))
+    x = linalg.spsolve(A_csc.astype(np.float64), b.astype(np.float64))
+    print("after")
 
     # Fills up the depth array with the computed depths
     z_min = min(x)
@@ -427,6 +306,7 @@ def inflationByBaran(mask, use_sparse=True):
                 depth[j, i] = np.sqrt(x[idx]) #- z_min
 
     return depth
+
 
 
 def displace_depth_by_color(depth_img_path, mask, depth, alpha=0.5):
@@ -508,15 +388,22 @@ def inflate_mesh(mask_path, color_img_path, output_path, depth_map_path, apply_d
     
     # Infer depth
     depth = inflationByBaran(mask)
-    #depth = inflationByDistanceTransform(mask)
+
+    #def fun(x):
+    #    m = 50
+    #    x = min(max(x,0),m)
+    #    y = np.sqrt(1-(x/m-1)**2)*m
+    #    return min(max(y,0),m)
+
+    #depth = inflationByDistanceTransform(mask,fun)
     #depth = depth * distance_transform
 
     # Apply depthmap
-    if apply_depth_map:
-        print("Applying depthmap")
-        depth = displace_depth_by_color(depth_map_path, mask, depth, depth_map_weight)
+    #if apply_depth_map:
+    #    print("Applying depthmap")
+    #    depth = displace_depth_by_color(depth_map_path, mask, depth, depth_map_weight)
 
-    depth = depth * max_depth
+    # depth = depth * max_depth
 
     # Apply depth to mesh
     vertices, faces, colors = depth2orthomesh(depth, color_img_path)
@@ -545,3 +432,8 @@ if __name__ == '__main__':
 
     # Read mask of mesh
     inflate_mesh(mask_path, color_img_path, output_path, depth_map_path, apply_depth_map=False, max_depth=1, depth_map_weight=1)
+    #depth = np.load("depth.npy")
+    #vertices, faces, colors = depth2orthomesh(depth, color_img_path)
+    #write_obj_file(os.path.join(output_path,'inflated_mesh.obj'), vertices, faces, color_img_path)
+    #write_mtl_file(os.path.join(output_path,'inflated_mesh.mtl'), color_img_path)
+    print('done')
