@@ -1,5 +1,5 @@
-# depthfusion
- depthfusion
+# Depthfusion
+ For a manual version with more finegrained control [click here](https://github.com/valleballe/ai-generated-artifacts).
 
 
 ## Requirements
@@ -29,4 +29,25 @@ brew install blender
 echo "alias blender=/Applications/Blender.app/Contents/MacOS/blender" >> ~/.bash_profile
 alias blender="open /Applications/Blender.app --args" 
 ```
+
+## Limitations
+* Can only generate mirrorable objects. Complex objects like chairs are not recommended.
+
+##  Contribute
+
+AI Generated Artifacts is under active development and contributors are welcome. If you have any suggestions, feature requests, or bug reports, please open new [issues](https://github.com/valleballe/ai-generated-artifacts/issues) on GitHub. 
+
+
+## BibTeX Citation
+
+If you use AI Generated Artifacts in a scientific publication or installation, we would appreciate using the following citations:
+
+```
+@software{danry2023,
+  author = {Danry, Valdemar},
+  month = {4},
+  title = {{Depthfusion}},
+  url = {https://github.com/valleballe/depthfusion},
+  year = {2023}
+}
 
