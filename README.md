@@ -1,5 +1,5 @@
 # Depthfusion
- For a manual version with more finegrained control [click here](https://github.com/valleballe/ai-generated-artifacts).
+For a manual version with more finegrained control [click here](https://github.com/valleballe/ai-generated-artifacts).
 
 
 ## Requirements
@@ -35,7 +35,7 @@ alias blender="open /Applications/Blender.app --args"
 
 ##  Contribute
 
-AI Generated Artifacts is under active development and contributors are welcome. If you have any suggestions, feature requests, or bug reports, please open new [issues](https://github.com/valleballe/ai-generated-artifacts/issues) on GitHub. 
+Depthfusion is under active development and contributors are welcome. If you have any suggestions, feature requests, or bug reports, please open new [issues](https://github.com/valleballe/depthfusion/issues) on GitHub. 
 
 
 ## BibTeX Citation
