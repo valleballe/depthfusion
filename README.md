@@ -30,6 +30,21 @@ echo "alias blender=/Applications/Blender.app/Contents/MacOS/blender" >> ~/.bash
 alias blender="open /Applications/Blender.app --args" 
 ```
 
+The text to 3D model components uses Dall-E2. For using the text to 3D model component, insert your OpenAI API key in the `keys/keys.py` file.
+```
+OPENAI_API_KEY = "YOUR_API_KEY"
+```
+
+## Usage
+Run the following command in your terminal. It helps to specify a specific object such as "A monkey vase"
+```
+# Generate from text
+python main.py --prompt "Your prompt of an object"
+
+# Generate from image
+python main.py --input_image "Path to your input image"
+```
+
 ## Limitations
 * Can only generate mirrorable objects. Complex objects like chairs are not recommended.
 
