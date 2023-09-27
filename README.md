@@ -19,7 +19,7 @@ wget https://github.com/intel-isl/DPT/releases/download/1_0/dpt_large-midas-2f21
 wget https://github.com/intel-isl/DPT/releases/download/1_0/dpt_hybrid-ade20k-53898607.pt -P utils/DPT/weights
 
 # install zoedepth
-cd zoedepth
+cd utils/zoedepth
 python sanity.py # downloading models
 ```
 
