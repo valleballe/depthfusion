@@ -33,7 +33,11 @@ def apply(color_img, overlap, progress_callback):
     # Load model
     print("DeepBump Color → Normals : loading model")
     addon_path = str(pathlib.Path(__file__).parent.absolute())
-    ort_session = ort.InferenceSession(addon_path + "/deepbump256.onnx")
+
+    try:
+        ort_session = ort.InferenceSession(addon_path + "/deepbump256.onnx")
+    except:
+        ort_session = ort.InferenceSession(addon_path + "/deepbump256.onnx", providers=['AzureExecutionProvider', 'CPUExecutionProvider'])
 
     # Predict normal map for each tile
     print("DeepBump Color → Normals : generating")
