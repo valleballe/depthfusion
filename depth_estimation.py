@@ -48,6 +48,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--input_path', type=str, default="input/vase.png", help='Path to the masks')
     parser.add_argument('--output_path', type=str, default="output/", help='Path to output the results')
+    parser.add_argument('--model', type=str, default="DeepBump", help='Model for depth inference')
 
     args = parser.parse_args()
 
@@ -55,5 +56,5 @@ if __name__ == '__main__':
     output_path = args.output_path
 
     # Run depth-estimation
-    depth_estimation(input_path, output_path, model="DPT")
+    depth_estimation(input_path, output_path, model="DeepBump")
     print("Depth estimation done")
