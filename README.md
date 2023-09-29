@@ -19,7 +19,7 @@ wget https://github.com/intel-isl/DPT/releases/download/1_0/dpt_large-midas-2f21
 wget https://github.com/intel-isl/DPT/releases/download/1_0/dpt_hybrid-ade20k-53898607.pt -P utils/DPT/weights
 
 # install zoedepth
-cd zoedepth
+cd utils/zoedepth
 python sanity.py # downloading models
 ```
 
@@ -28,6 +28,21 @@ If you are on mac, you can use homebrew to install blender
 brew install blender
 echo "alias blender=/Applications/Blender.app/Contents/MacOS/blender" >> ~/.bash_profile
 alias blender="open /Applications/Blender.app --args" 
+```
+
+The text to 3D model components uses Dall-E2. For using the text to 3D model component, insert your OpenAI API key in the `keys/keys.py` file.
+```
+OPENAI_API_KEY = "YOUR_API_KEY"
+```
+
+## Usage
+Run the following command in your terminal. It helps to specify a specific object such as "A monkey vase"
+```
+# Generate from text
+python main.py --prompt "Your prompt of an object"
+
+# Generate from image
+python main.py --input_image "Path to your input image"
 ```
 
 ## Limitations
